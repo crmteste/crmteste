@@ -1,0 +1,70 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      Role
+  leads     Lead[]
+  createdAt DateTime @default(now())
+}
+
+model Lead {
+  id        String   @id @default(uuid())
+  name      String
+  company   String?   // nome da empresa
+  document  String?   // CPF/CNPJ
+  email     String?
+  phone     String?
+  origin    String?   // origem do lead
+  market    String?   // mercado
+  stage     String
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  activities Activity[]
+  buyers     Buyer[]
+  createdAt DateTime @default(now())
+}
+
+
+model Activity {
+  id        String   @id @default(uuid())
+  type      ActivityType
+  content   String
+  lead      Lead     @relation(fields: [leadId], references: [id])
+  leadId    String
+  createdAt DateTime @default(now())
+}
+
+enum Role {
+  ADMIN
+  COLLABORATOR
+}
+
+enum ActivityType {
+  CALL
+  WHATSAPP
+  EMAIL
+  SALE
+  QUOTE
+  PRODUCT_DEVELOPMENT // <- nova opção
+}
+
+model Buyer {
+  id       String   @id @default(uuid())
+  name     String
+  email    String?
+  phone    String?
+  role     String?   // Cargo
+  lead     Lead     @relation(fields: [leadId], references: [id])
+  leadId   String
+  createdAt DateTime @default(now())
+}
