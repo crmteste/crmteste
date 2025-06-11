@@ -5,7 +5,10 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   app.enableCors({
-    origin: 'http://localhost:3001', // Libera o frontend
+    origin: [
+      'http://localhost:3001',
+      'https://crmfront-hl9hwbp0t-crmtestes-projects.vercel.app',
+    ],
     credentials: true,
   });
 
