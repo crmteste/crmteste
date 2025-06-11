@@ -1,29 +1,46 @@
-# Usa Node 18 alpine (leve)
-FROM node:18-alpine
+# Stage 1: Build
+FROM node:18-alpine AS builder
 
-# Define diretório de trabalho
+# Diretório de trabalho
 WORKDIR /app
 
-# Instala libc6-compat para o Prisma funcionar no alpine
+# Dependência para compatibilidade libc6 no Alpine
 RUN apk add --no-cache libc6-compat
 
-# Copia package.json e package-lock.json para instalar dependências
+# Copia arquivos de dependências
 COPY package*.json ./
 
-# Instala dependências em modo produção (mais leve)
-RUN npm install --production
+# Instala todas as dependências (dev + prod) para build
+RUN npm install
 
-# Copia todo o código da aplicação para o container
+# Copia todo o código fonte
 COPY . .
 
-# Build do projeto NestJS (transpila TS para JS)
+# Build do projeto (TS -> JS)
 RUN npm run build
 
-# Gera Prisma client para comunicação com banco
+# Gera Prisma Client (baseado no schema.prisma)
 RUN npx prisma generate
 
-# Expõe a porta padrão do NestJS
+# Stage 2: Imagem final menor só com runtime
+FROM node:18-alpine
+
+WORKDIR /app
+
+RUN apk add --no-cache libc6-compat
+
+# Copia package.json para instalar só dependências de produção
+COPY package*.json ./
+
+RUN npm install --production
+
+# Copia a pasta build e a pasta prisma do estágio builder
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/node_modules ./node_modules
+
+# Expõe a porta padrão do NestJS (3000)
 EXPOSE 3000
 
-# Comando para rodar migrations e iniciar app em produção
+# Comando para rodar migrations e iniciar a aplicação
 CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main"]
