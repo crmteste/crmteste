@@ -3,20 +3,20 @@ FROM node:18-alpine AS builder
 
 WORKDIR /app
 
-# Prisma exige isso para funcionar corretamente no Alpine
+# Prisma exige libc6-compat no Alpine
 RUN apk add --no-cache libc6-compat
 
-# Instala dependências
+# Copia package.json e package-lock.json para instalar dependências
 COPY package*.json ./
 RUN npm install
 
-# Copia o restante do código
+# Copia o restante do código fonte
 COPY . .
 
-# Gera os tipos Prisma ANTES do build
+# Gera o Prisma Client antes do build
 RUN npx prisma generate
 
-# Compila a aplicação
+# Compila o código TypeScript com NestJS
 RUN npm run build
 
 # Stage 2 - Runtime
@@ -24,18 +24,20 @@ FROM node:18-alpine
 
 WORKDIR /app
 
+# Lib necessária no runtime
 RUN apk add --no-cache libc6-compat
 
-# Copia apenas arquivos essenciais da build
+# Copia package.json para instalar dependências de produção
 COPY package*.json ./
 RUN npm install --production
 
-# Copia artefatos da build
+# Copia os arquivos gerados na build
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/node_modules ./node_modules
 
+# Exponha a porta padrão do NestJS
 EXPOSE 3000
 
-# Executa as migrações e inicia a aplicação
-CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main"]
+# Roda as migrações e inicia a aplicação no caminho correto
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/src/main.js"]
